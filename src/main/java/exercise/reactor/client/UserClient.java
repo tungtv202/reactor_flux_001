@@ -1,11 +1,13 @@
 package exercise.reactor.client;
 
 import exercise.reactor.dto.User;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Component
 public class UserClient {
     @Autowired
@@ -15,6 +17,7 @@ public class UserClient {
         return webClient.get()
                 .uri("users/{username}", username)
                 .retrieve()
-                .bodyToMono(User.class);
+                .bodyToMono(User.class)
+                .doOnError(e -> log.error(e.getMessage()));
     }
 }

@@ -6,6 +6,8 @@ import exercise.reactor.client.UserClient;
 import exercise.reactor.dto.PopularPurchasesDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -19,28 +21,44 @@ import static org.springframework.web.reactive.function.server.ServerResponse.ok
 @Slf4j
 public class PurchaseHandler {
     public static final int PURCHASES_RECENT_LIMIT = 5;
-    @Autowired
-    private UserClient userClient;
-    @Autowired
-    private ProductClient productClient;
-    @Autowired
-    private PurchaseClient purchaseClient;
+    private final UserClient userClient;
+    private final ProductClient productClient;
+    private final PurchaseClient purchaseClient;
+    private final CacheService cacheService;
 
+    @Autowired
+    public PurchaseHandler(UserClient userClient, ProductClient productClient, PurchaseClient purchaseClient,
+                           CacheService cacheService) {
+        this.userClient = userClient;
+        this.productClient = productClient;
+        this.purchaseClient = purchaseClient;
+        this.cacheService = cacheService;
+    }
+
+//    @Cacheable
     public Mono<ServerResponse> purchasesRecent(ServerRequest request) {
         final var username = request.pathVariable("username");
         return userClient.get(username)
                 .flatMap(c -> ok().contentType(MediaType.APPLICATION_JSON)
-                        .body(getPopularPurchasesDtoFlux(username), PopularPurchasesDto.class))
-                .switchIfEmpty(ok().bodyValue(String.format("User with username of %s  was not found", username)))
-                ;
+                        .body(getPopularPurchasesDto(username), PopularPurchasesDto.class))
+                .switchIfEmpty(ServerResponse.status(HttpStatus.NOT_FOUND)
+                        .bodyValue(String.format("User with username of %s  was not found", username)));
     }
 
-    private Flux<PopularPurchasesDto> getPopularPurchasesDtoFlux(String username) {
-//        if (1==1) return Flux.error(new RuntimeException("1233"));
-        var purchaseFlux = purchaseClient.listByUsername(username, PURCHASES_RECENT_LIMIT).flatMapMany(Flux::fromIterable);
-        var productFlux = purchaseFlux.flatMap(e -> productClient.get(e.getProductId()));
-        var result = productFlux.flatMap(e2 -> purchaseClient.listByProductId(e2.getId(), Integer.MAX_VALUE)
-                .map(r -> new PopularPurchasesDto(e2, r)));
-        return result.collectSortedList((a, b) -> a.getRecentUsername().size() > b.getRecentUsername().size() ? -1 : 0).flatMapMany(Flux::fromIterable);
+    private Flux<PopularPurchasesDto> getPopularPurchasesDto(String username) {
+        var cacheValue = cacheService.getPopularPurchases(username);
+        if (cacheValue != null) return Flux.fromIterable(cacheValue);
+        var productFlux = purchaseClient.listByUsername(username, PURCHASES_RECENT_LIMIT)
+                .flatMapMany(Flux::fromIterable)
+                .flatMap(e -> productClient.get(e.getProductId()));
+        var popularPurchasesDtoFlux = productFlux.flatMap(e ->
+                purchaseClient.listByProductId(e.getId(), Integer.MAX_VALUE)
+                        .map(r -> new PopularPurchasesDto(e, r)));
+        // sort
+        var result = popularPurchasesDtoFlux.collectSortedList((a, b) ->
+                a.getRecentUsername().size() > b.getRecentUsername().size() ? -1 : 0)
+                .flatMapMany(Flux::fromIterable);
+        cacheService.setPopularPurchases(username, result);
+        return result;
     }
 }

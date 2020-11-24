@@ -29,6 +29,10 @@ public class PopularPurchasesDto {
         this.productFace = product.getFace();
         this.productPrice = product.getPrice();
         this.productSize = product.getSize();
-        this.recentUsername = purchases == null ? new ArrayList<>() : purchases.stream().map(Purchase::getUsername).distinct().collect(Collectors.toList());
+        this.recentUsername = purchases == null ? new ArrayList<>() :
+                purchases.stream()
+                        .map(Purchase::getUsername)
+                        .distinct()
+                        .collect(Collectors.toList());
     }
 }
