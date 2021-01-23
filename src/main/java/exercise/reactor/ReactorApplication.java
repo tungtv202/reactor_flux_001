@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.blockhound.BlockHound;
 
 import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
@@ -15,6 +16,7 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 public class ReactorApplication {
 
     public static void main(String[] args) {
+//        BlockHound.install();
         SpringApplication.run(ReactorApplication.class, args);
     }
 
