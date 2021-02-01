@@ -16,7 +16,7 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 public class ReactorApplication {
 
     public static void main(String[] args) {
-//        BlockHound.install();
+        BlockHound.install();
         SpringApplication.run(ReactorApplication.class, args);
     }
 

@@ -345,6 +345,18 @@ public class PurchaseClient {
 ```
 - Test khi call api 3rd, và thấy bị `blocking` => Có vẻ như server 3rd, không hỗ trợ việc reactive
 ![Blocking by 3rd](https://tungexplorer.s3.ap-southeast-1.amazonaws.com/java/reactor/BlockingBy3rd.JPG)
+-> Fix it. sử dụng ` .subscribeOn(Schedulers.boundedElastic());`
+```java
+    public Mono<User> get(String username) {
+        return webClient.get()
+                .uri("users/{username}", username)
+                .retrieve()
+                .bodyToMono(User.class)
+                .doOnError(e -> log.error(e.getMessage()))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+```
+, test lại thấy hết blocking
 
 ## How to run source code?
 1. Maven clean & package    

@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Component
@@ -18,6 +19,7 @@ public class UserClient {
                 .uri("users/{username}", username)
                 .retrieve()
                 .bodyToMono(User.class)
-                .doOnError(e -> log.error(e.getMessage()));
+                .doOnError(e -> log.error(e.getMessage()))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 }
